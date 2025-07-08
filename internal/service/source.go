@@ -140,40 +140,18 @@ func (s *SourceService) UpdateSource(ctx context.Context, id uuid.UUID, form map
 		return nil, err
 	}
 
-	if form.Name != nil {
-		source.Name = *form.Name
-	}
+	// Delegate field mapping to the mapper layer
+	imageInfra, labels := form.Apply(source)
 
-	if form.Labels != nil {
-		labels := mappers.LabelsFromApi(source.ID, form.Labels)
-
+	// Persist label updates if provided
+	if labels != nil {
 		if err := s.store.Label().UpdateLabels(ctx, source.ID, labels); err != nil {
 			_, _ = store.Rollback(ctx)
 			return nil, err
 		}
-		source.Labels = labels
 	}
 
-	imageInfra := source.ImageInfra
-
-	if form.SshPublicKey != nil {
-		imageInfra.SshPublicKey = *form.SshPublicKey
-	}
-	if form.CertificateChain != nil {
-		imageInfra.CertificateChain = *form.CertificateChain
-	}
-	if form.Proxy != nil {
-		if form.Proxy.HttpUrl != nil {
-			imageInfra.HttpProxyUrl = *form.Proxy.HttpUrl
-		}
-		if form.Proxy.HttpsUrl != nil {
-			imageInfra.HttpsProxyUrl = *form.Proxy.HttpsUrl
-		}
-		if form.Proxy.NoProxy != nil {
-			imageInfra.NoProxyDomains = *form.Proxy.NoProxy
-		}
-	}
-
+	// Persist ImageInfra changes
 	updatedImageInfra, err := s.store.ImageInfra().Update(ctx, imageInfra)
 	if err != nil {
 		_, _ = store.Rollback(ctx)

@@ -114,13 +114,18 @@ var _ = Describe("source handler", Ordered, func() {
 
 		It("successfully creates a source -- with proxy paramters defined", func() {
 			srv := service.NewSourceService(s)
+			httpUrl := "http"
+			httpsUrl := "https"
+			noProxy := "noproxy"
 			source, err := srv.CreateSource(context.TODO(), mappers.SourceCreateForm{
 				Username: "admin",
 				OrgID:    "admin",
 				Name:     "test",
-				HttpUrl:  "http",
-				HttpsUrl: "https",
-				NoProxy:  "noproxy",
+				Proxy: &v1alpha1.AgentProxy{
+					HttpUrl:  &httpUrl,
+					HttpsUrl: &httpsUrl,
+					NoProxy:  &noProxy,
+				},
 			})
 			Expect(err).To(BeNil())
 			Expect(source.Name).To(Equal("test"))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/google/uuid"
 	"github.com/kubev2v/migration-planner/api/v1alpha1"
 	"github.com/kubev2v/migration-planner/internal/api/server"
 	apiServer "github.com/kubev2v/migration-planner/internal/api/server"
@@ -13,6 +14,7 @@ import (
 	"github.com/kubev2v/migration-planner/internal/handlers/validator"
 	"github.com/kubev2v/migration-planner/internal/service"
 	srvMappers "github.com/kubev2v/migration-planner/internal/service/mappers"
+	"github.com/kubev2v/migration-planner/internal/store/model"
 )
 
 type ServiceHandler struct {
@@ -23,6 +25,75 @@ func NewServiceHandler(sourceService *service.SourceService) *ServiceHandler {
 	return &ServiceHandler{
 		sourceSrv: sourceService,
 	}
+}
+
+// validateSourceData validates the source data using the source validation rules
+func validateSourceData(data interface{}) error {
+	v := validator.NewValidator()
+	v.Register(validator.NewSourceValidationRules()...)
+	return v.Struct(data)
+}
+
+// authorizeSourceAccess checks if the user has access to the source
+// returns the source if authorized, nil and an error response otherwise
+// authorizeSourceAccess is a single function that handles authorization for all operations
+// It takes a response type parameter to return the appropriate error response type
+func (s *ServiceHandler) authorizeSourceAccess(
+	ctx context.Context,
+	sourceID uuid.UUID,
+	action string,
+	responseType string,
+) (*model.Source, interface{}, bool) {
+	source, err := s.sourceSrv.GetSource(ctx, sourceID)
+	if err != nil {
+		switch err.(type) {
+		case *service.ErrResourceNotFound:
+			switch responseType {
+			case "get":
+				return nil, server.GetSource404JSONResponse{Message: err.Error()}, false
+			case "delete":
+				return nil, server.DeleteSource404JSONResponse{Message: err.Error()}, false
+			case "update":
+				return nil, server.UpdateSource404JSONResponse{Message: err.Error()}, false
+			case "inventory":
+				return nil, server.UpdateInventory404JSONResponse{Message: err.Error()}, false
+			default:
+				return nil, server.GetSource404JSONResponse{Message: err.Error()}, false
+			}
+		default:
+			switch responseType {
+			case "get":
+				return nil, server.GetSource500JSONResponse{}, false
+			case "delete":
+				return nil, server.DeleteSource500JSONResponse{}, false
+			case "update":
+				return nil, server.UpdateSource500JSONResponse{}, false
+			case "inventory":
+				return nil, server.UpdateInventory500JSONResponse{}, false
+			default:
+				return nil, server.GetSource500JSONResponse{}, false
+			}
+		}
+	}
+
+	user := auth.MustHaveUser(ctx)
+	if user.Organization != source.OrgID {
+		message := fmt.Sprintf("forbidden to %s source %s by user with org_id %s", action, sourceID, user.Organization)
+		switch responseType {
+		case "get":
+			return nil, server.GetSource403JSONResponse{Message: message}, false
+		case "delete":
+			return nil, server.DeleteSource403JSONResponse{Message: message}, false
+		case "update":
+			return nil, server.UpdateSource403JSONResponse{Message: message}, false
+		case "inventory":
+			return nil, server.UpdateInventory403JSONResponse{Message: message}, false
+		default:
+			return nil, server.GetSource403JSONResponse{Message: message}, false
+		}
+	}
+
+	return source, nil, true
 }
 
 // (GET /api/v1/sources)
@@ -51,10 +122,7 @@ func (s *ServiceHandler) CreateSource(ctx context.Context, request apiServer.Cre
 	}
 
 	form := v1alpha1.SourceCreate(*request.Body)
-	v := validator.NewValidator()
-	v.Register(validator.NewSourceValidationRules()...)
-
-	if err := v.Struct(form); err != nil {
+	if err := validateSourceData(form); err != nil {
 		return apiServer.CreateSource400JSONResponse{Message: err.Error()}, nil
 	}
 
@@ -65,7 +133,7 @@ func (s *ServiceHandler) CreateSource(ctx context.Context, request apiServer.Cre
 
 	source, err := s.sourceSrv.CreateSource(ctx, sourceCreateForm)
 	if err != nil {
-		return apiServer.CreateSource500JSONResponse{}, nil
+		return apiServer.CreateSource500JSONResponse{Message: fmt.Sprintf("failed to create source: %v", err)}, nil
 	}
 
 	return apiServer.CreateSource201JSONResponse(mappers.SourceToApi(source)), nil
@@ -82,18 +150,13 @@ func (s *ServiceHandler) DeleteSources(ctx context.Context, request apiServer.De
 
 // (DELETE /api/v1/sources/{id})
 func (s *ServiceHandler) DeleteSource(ctx context.Context, request apiServer.DeleteSourceRequestObject) (apiServer.DeleteSourceResponseObject, error) {
-	source, err := s.sourceSrv.GetSource(ctx, request.Id)
-	if err != nil {
-		return server.DeleteSource404JSONResponse{}, nil
-	}
-
-	user := auth.MustHaveUser(ctx)
-	if user.Organization != source.OrgID {
-		return server.DeleteSource403JSONResponse{}, nil
+	_, errResp, ok := s.authorizeSourceAccess(ctx, request.Id, "delete", "delete")
+	if !ok {
+		return errResp.(apiServer.DeleteSourceResponseObject), nil
 	}
 
 	if err := s.sourceSrv.DeleteSource(ctx, request.Id); err != nil {
-		return server.DeleteSource500JSONResponse{}, nil
+		return server.DeleteSource500JSONResponse{Message: fmt.Sprintf("failed to delete source: %v", err)}, nil
 	}
 
 	return server.DeleteSource200JSONResponse{}, nil
@@ -101,19 +164,9 @@ func (s *ServiceHandler) DeleteSource(ctx context.Context, request apiServer.Del
 
 // (GET /api/v1/sources/{id})
 func (s *ServiceHandler) GetSource(ctx context.Context, request apiServer.GetSourceRequestObject) (apiServer.GetSourceResponseObject, error) {
-	source, err := s.sourceSrv.GetSource(ctx, request.Id)
-	if err != nil {
-		switch err.(type) {
-		case *service.ErrResourceNotFound:
-			return server.GetSource404JSONResponse{Message: err.Error()}, nil
-		default:
-			return server.GetSource500JSONResponse{}, nil
-		}
-	}
-
-	user := auth.MustHaveUser(ctx)
-	if user.Organization != source.OrgID {
-		return server.GetSource403JSONResponse{Message: fmt.Sprintf("forbidden access to source %q", request.Id)}, nil
+	source, errResp, ok := s.authorizeSourceAccess(ctx, request.Id, "access", "get")
+	if !ok {
+		return errResp.(apiServer.GetSourceResponseObject), nil
 	}
 
 	return server.GetSource200JSONResponse(mappers.SourceToApi(*source)), nil
@@ -125,36 +178,17 @@ func (s *ServiceHandler) UpdateSource(ctx context.Context, request apiServer.Upd
 		return server.UpdateSource400JSONResponse{Message: "There is nothing to update"}, nil
 	}
 
-	// Add validation for update
-	v := validator.NewValidator()
-	v.Register(validator.NewSourceValidationRules()...)
-	if err := v.Struct(*request.Body); err != nil {
+	if err := validateSourceData(*request.Body); err != nil {
 		return server.UpdateSource400JSONResponse{Message: err.Error()}, nil
 	}
 
-	source, err := s.sourceSrv.GetSource(ctx, request.Id)
-	if err != nil {
-		switch err.(type) {
-		case *service.ErrResourceNotFound:
-			return server.UpdateSource404JSONResponse{Message: err.Error()}, nil
-		default:
-			return server.UpdateSource500JSONResponse{Message: err.Error()}, nil
-		}
+	_, errResp, ok := s.authorizeSourceAccess(ctx, request.Id, "update", "update")
+	if !ok {
+		return errResp.(apiServer.UpdateSourceResponseObject), nil
 	}
 
-	user := auth.MustHaveUser(ctx)
-	if user.Organization != source.OrgID {
-		return server.UpdateSource403JSONResponse{Message: fmt.Sprintf("forbidden to update source %s by user with org_id %s", request.Id, user.Organization)}, nil
-	}
-
-	// Convert API request to service form
-	form := srvMappers.SourceUpdateForm{
-		Name:             request.Body.Name,
-		Labels:           request.Body.Labels,
-		SshPublicKey:     request.Body.SshPublicKey,
-		CertificateChain: request.Body.CertificateChain,
-		Proxy:            request.Body.Proxy,
-	}
+	// Convert API request to service form using handler mapper
+	form := mappers.SourceUpdateFormApi(*request.Body)
 
 	updatedSource, err := s.sourceSrv.UpdateSource(ctx, request.Id, form)
 	if err != nil {
@@ -162,7 +196,7 @@ func (s *ServiceHandler) UpdateSource(ctx context.Context, request apiServer.Upd
 		case *service.ErrResourceNotFound:
 			return server.UpdateSource404JSONResponse{Message: err.Error()}, nil
 		default:
-			return apiServer.UpdateSource500JSONResponse{Message: fmt.Sprintf("failed to update source %s", request.Id)}, nil
+			return apiServer.UpdateSource500JSONResponse{Message: fmt.Sprintf("failed to update source %s: %v", request.Id, err)}, nil
 		}
 	}
 
@@ -175,19 +209,9 @@ func (s *ServiceHandler) UpdateInventory(ctx context.Context, request apiServer.
 		return server.UpdateInventory400JSONResponse{Message: "empty body"}, nil
 	}
 
-	source, err := s.sourceSrv.GetSource(ctx, request.Id)
-	if err != nil {
-		switch err.(type) {
-		case *service.ErrResourceNotFound:
-			return server.UpdateInventory404JSONResponse{Message: err.Error()}, nil
-		default:
-			return server.UpdateInventory500JSONResponse{Message: err.Error()}, nil
-		}
-	}
-
-	user := auth.MustHaveUser(ctx)
-	if user.Organization != source.OrgID {
-		return server.UpdateInventory403JSONResponse{Message: fmt.Sprintf("forbidden to update source inventory %s by user with org_id %s", request.Id, user.Organization)}, nil
+	_, errResp, ok := s.authorizeSourceAccess(ctx, request.Id, "update inventory for", "inventory")
+	if !ok {
+		return errResp.(apiServer.UpdateInventoryResponseObject), nil
 	}
 
 	updatedSource, err := s.sourceSrv.UpdateInventory(ctx, srvMappers.InventoryUpdateForm{
@@ -200,7 +224,7 @@ func (s *ServiceHandler) UpdateInventory(ctx context.Context, request apiServer.
 		case *service.ErrInvalidVCenterID:
 			return server.UpdateInventory400JSONResponse{Message: err.Error()}, nil
 		default:
-			return apiServer.UpdateInventory500JSONResponse{Message: fmt.Sprintf("failed to update source inventory %s", request.Id)}, nil
+			return apiServer.UpdateInventory500JSONResponse{Message: fmt.Sprintf("failed to update source inventory %s: %v", request.Id, err)}, nil
 		}
 	}
 

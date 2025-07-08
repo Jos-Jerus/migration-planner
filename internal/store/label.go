@@ -2,10 +2,10 @@ package store
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/kubev2v/migration-planner/internal/store/model"
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -23,8 +23,7 @@ func NewLabelStore(db *gorm.DB) Label {
 }
 
 func (l *labelStore) DeleteBySourceID(ctx context.Context, sourceID string) error {
-	// Use raw SQL to ensure the delete works correctly with composite primary keys
-	return l.getDB(ctx).WithContext(ctx).Exec("DELETE FROM labels WHERE source_id = ?", sourceID).Error
+	return l.getDB(ctx).WithContext(ctx).Where("source_id = ?", sourceID).Delete(&model.Label{}).Error
 }
 
 func (l *labelStore) UpdateLabels(ctx context.Context, sourceID uuid.UUID, labels []model.Label) error {
@@ -33,15 +32,19 @@ func (l *labelStore) UpdateLabels(ctx context.Context, sourceID uuid.UUID, label
 
 	// First delete existing labels using the DeleteBySourceID method
 	if err := l.DeleteBySourceID(ctx, sourceIDStr); err != nil {
-		logrus.Errorf("Failed to delete existing labels for source ID: %s, error: %v", sourceIDStr, err)
-		return err
+		return fmt.Errorf("failed to delete existing labels: %w", err)
+	}
+
+	if len(labels) == 0 {
+		return nil
 	}
 
 	// Create new labels
-	for _, label := range labels {
-		label.SourceID = sourceIDStr
-		if err := db.Create(&label).Error; err != nil {
-			return err
+	for i := range labels {
+		// Ensure source ID is set correctly
+		labels[i].SourceID = sourceIDStr
+		if err := db.Create(&labels[i]).Error; err != nil {
+			return fmt.Errorf("failed to create label with key '%s': %w", labels[i].Key, err)
 		}
 	}
 

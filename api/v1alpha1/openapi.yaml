@@ -564,6 +564,14 @@ components:
             validate: "omitnil"
         certificateChain:
           $ref: '#/components/schemas/ValidatedCertificateChain'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+            x-oapi-codegen-extra-tags:
+              validate: "required,label"
+          x-oapi-codegen-extra-tags:
+            validate: "omitempty,dive,required"
       required:
         - name
 

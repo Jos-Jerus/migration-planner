@@ -140,10 +140,11 @@ type Source struct {
 
 // SourceCreate defines model for SourceCreate.
 type SourceCreate struct {
-	CertificateChain *ValidatedCertificateChain `json:"certificateChain,omitempty" validate:"omitnil,certs"`
+	CertificateChain *ValidatedCertificateChain `json:"certificateChain" validate:"omitnil,certs"`
+	Labels           *[]Label                   `json:"labels,omitempty" validate:"omitempty,dive,required"`
 	Name             ValidatedSourceName        `json:"name" validate:"required,source_name,min=1,max=100"`
 	Proxy            *AgentProxy                `json:"proxy,omitempty"`
-	SshPublicKey     *ValidatedSSHPublicKey     `json:"sshPublicKey,omitempty" validate:"omitnil,ssh_key"`
+	SshPublicKey     *ValidatedSSHPublicKey     `json:"sshPublicKey" validate:"omitnil,ssh_key"`
 }
 
 // SourceList defines model for SourceList.
@@ -151,11 +152,11 @@ type SourceList = []Source
 
 // SourceUpdate defines model for SourceUpdate.
 type SourceUpdate struct {
-	CertificateChain *ValidatedCertificateChain   `json:"certificateChain,omitempty" validate:"omitnil,certs"`
+	CertificateChain *ValidatedCertificateChain   `json:"certificateChain" validate:"omitnil,certs"`
 	Labels           *[]Label                     `json:"labels,omitempty" validate:"omitempty,dive,required"`
 	Name             *ValidatedOptionalSourceName `json:"name,omitempty" validate:"omitempty,source_name,min=1,max=100"`
 	Proxy            *AgentProxy                  `json:"proxy,omitempty"`
-	SshPublicKey     *ValidatedSSHPublicKey       `json:"sshPublicKey,omitempty" validate:"omitnil,ssh_key"`
+	SshPublicKey     *ValidatedSSHPublicKey       `json:"sshPublicKey" validate:"omitnil,ssh_key"`
 }
 
 // Status Status is a return value for calls that don't return other objects.
