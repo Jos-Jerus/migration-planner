@@ -15,6 +15,7 @@ import (
 	"github.com/kubev2v/migration-planner/internal/service/mappers"
 	"github.com/kubev2v/migration-planner/internal/store"
 	"github.com/kubev2v/migration-planner/internal/store/model"
+	"github.com/kubev2v/migration-planner/internal/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gorm.io/gorm"
@@ -122,11 +123,9 @@ var _ = Describe("source handler", Ordered, func() {
 				Username: "admin",
 				OrgID:    "admin",
 				Name:     "test",
-				Proxy: &v1alpha1.AgentProxy{
-					HttpUrl:  &httpUrl,
-					HttpsUrl: &httpsUrl,
-					NoProxy:  &noProxy,
-				},
+				HttpUrl:  httpUrl,
+				HttpsUrl: httpsUrl,
+				NoProxy:  noProxy,
 			})
 			Expect(err).To(BeNil())
 			Expect(source.Name).To(Equal("test"))
@@ -470,14 +469,14 @@ TZUUZpsP4or19B48WSqiV/eMdCB/PxnFZYT1SyFLlDBiXolb+30HbGeeaF0bEg+u
 			resp, err := srv.UpdateSource(ctx, server.UpdateSourceRequestObject{
 				Id: uuid.MustParse(sourceID),
 				Body: &v1alpha1.SourceUpdate{
-					Name:             toStrPtr(newName),
+					Name:             util.ToStrPtr(newName),
 					Labels:           &newLabels,
-					SshPublicKey:     toStrPtr(newSshKey),
-					CertificateChain: toStrPtr(newCertChain),
+					SshPublicKey:     util.ToStrPtr(newSshKey),
+					CertificateChain: util.ToStrPtr(newCertChain),
 					Proxy: &v1alpha1.AgentProxy{
-						HttpUrl:  toStrPtr(newHttpProxy),
-						HttpsUrl: toStrPtr(newHttpsProxy),
-						NoProxy:  toStrPtr(newNoProxy),
+						HttpUrl:  util.ToStrPtr(newHttpProxy),
+						HttpsUrl: util.ToStrPtr(newHttpsProxy),
+						NoProxy:  util.ToStrPtr(newNoProxy),
 					},
 				},
 			})
@@ -629,7 +628,3 @@ TZUUZpsP4or19B48WSqiV/eMdCB/PxnFZYT1SyFLlDBiXolb+30HbGeeaF0bEg+u
 		})
 	})
 })
-
-func toStrPtr(s string) *string {
-	return &s
-}

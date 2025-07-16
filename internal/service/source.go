@@ -130,42 +130,44 @@ func (s *SourceService) UpdateSource(ctx context.Context, id uuid.UUID, form map
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		_, _ = store.Rollback(ctx)
+	}()
 
 	source, err := s.store.Source().Get(ctx, id)
 	if err != nil {
-		_, _ = store.Rollback(ctx)
 		if errors.Is(err, store.ErrRecordNotFound) {
 			return nil, NewErrSourceNotFound(id)
 		}
 		return nil, err
 	}
 
-	// Delegate field mapping to the mapper layer
-	imageInfra, labels := form.Apply(source)
+	// Update source fields
+	form.ToSource(source)
+	if _, err := s.store.Source().Update(ctx, *source); err != nil {
+		return nil, err
+	}
 
-	// Persist label updates if provided
-	if labels != nil {
+	// Update ImageInfra
+	form.ToImageInfra(&source.ImageInfra)
+	if _, err := s.store.ImageInfra().Update(ctx, source.ImageInfra); err != nil {
+		return nil, err
+	}
+
+	// Update labels
+	if labels := form.ToLabels(); labels != nil {
 		if err := s.store.Label().UpdateLabels(ctx, source.ID, labels); err != nil {
-			_, _ = store.Rollback(ctx)
 			return nil, err
 		}
 	}
 
-	// Persist ImageInfra changes
-	updatedImageInfra, err := s.store.ImageInfra().Update(ctx, imageInfra)
-	if err != nil {
-		_, _ = store.Rollback(ctx)
+	if _, err := store.Commit(ctx); err != nil {
 		return nil, err
 	}
-	source.ImageInfra = *updatedImageInfra
 
-	updatedSource, updateErr := s.store.Source().Update(ctx, *source)
-	if updateErr != nil {
-		_, _ = store.Rollback(ctx)
-		return nil, updateErr
-	}
-
-	if _, err := store.Commit(ctx); err != nil {
+	// Re-fetch source to get all updated associations
+	updatedSource, err := s.store.Source().Get(ctx, id)
+	if err != nil {
 		return nil, err
 	}
 
@@ -254,7 +256,7 @@ func (s *SourceService) UploadRvtoolsFile(ctx context.Context, sourceID uuid.UUI
 
 	inventory, err := rvtools.ParseRVTools(rvtoolsContent)
 	if err != nil {
-		return fmt.Errorf("error parsing RVTools file: %v", err)
+		return fmt.Errorf("Error parsing RVTools file: %v", err)
 	}
 
 	if source.VCenterID != "" && source.VCenterID != inventory.Vcenter.Id {

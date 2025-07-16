@@ -209,6 +209,18 @@ type VMs struct {
 	TotalMigratableWithWarnings *int                `json:"totalMigratableWithWarnings,omitempty"`
 }
 
+// ValidatedCertificateChain defines model for ValidatedCertificateChain.
+type ValidatedCertificateChain = string
+
+// ValidatedOptionalSourceName defines model for ValidatedOptionalSourceName.
+type ValidatedOptionalSourceName = string
+
+// ValidatedSSHPublicKey defines model for ValidatedSSHPublicKey.
+type ValidatedSSHPublicKey = string
+
+// ValidatedSourceName defines model for ValidatedSourceName.
+type ValidatedSourceName = string
+
 // OsInfo defines model for osInfo.
 type OsInfo struct {
 	Count     int  `json:"count"`
