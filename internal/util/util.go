@@ -69,7 +69,7 @@ func GetIntEnv(key string, defaultValue uint) (uint, error) {
 	return defaultValue, nil
 }
 
-// Contains checks if a slice contains a specific string
+// Contains reports whether the given slice contains the specified string.
 func Contains(slice []string, val string) bool {
 	for _, item := range slice {
 		if item == val {
@@ -79,7 +79,7 @@ func Contains(slice []string, val string) bool {
 	return false
 }
 
-// DerefString safely dereferences a string pointer, returning an empty string if the pointer is nil
+// DerefString returns the value of the given string pointer, or an empty string if the pointer is nil.
 func DerefString(s *string) string {
 	if s == nil {
 		return ""
@@ -87,12 +87,12 @@ func DerefString(s *string) string {
 	return *s
 }
 
-// ToStrPtr returns a pointer to the given string
+// ToStrPtr returns a pointer to the provided string value.
 func ToStrPtr(s string) *string {
 	return &s
 }
 
-// IntPtr returns a pointer to the given int
+// IntPtr returns a pointer to the provided integer value.
 func IntPtr(i int) *int {
 	return &i
 }

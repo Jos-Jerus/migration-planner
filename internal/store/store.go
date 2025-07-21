@@ -30,6 +30,7 @@ type DataStore struct {
 	label      Label
 }
 
+// NewStore creates and returns a new DataStore instance with all sub-stores initialized using the provided GORM database connection.
 func NewStore(db *gorm.DB) Store {
 	return &DataStore{
 		agent:      NewAgentSource(db),

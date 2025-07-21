@@ -19,13 +19,15 @@ type ServiceHandler struct {
 	sourceSrv *service.SourceService
 }
 
+// NewServiceHandler creates and returns a new ServiceHandler with the provided SourceService.
 func NewServiceHandler(sourceService *service.SourceService) *ServiceHandler {
 	return &ServiceHandler{
 		sourceSrv: sourceService,
 	}
 }
 
-// validateSourceData validates the source data using the source validation rules
+// validateSourceData validates the provided source data against registered source validation rules.
+// Returns a validation error if the data does not conform to the rules.
 func validateSourceData(data interface{}) error {
 	v := validator.NewValidator()
 	v.Register(validator.NewSourceValidationRules()...)

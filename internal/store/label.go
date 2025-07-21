@@ -18,6 +18,7 @@ type labelStore struct {
 	db *gorm.DB
 }
 
+// NewLabelStore returns a new Label store backed by the provided GORM database connection.
 func NewLabelStore(db *gorm.DB) Label {
 	return &labelStore{db: db}
 }

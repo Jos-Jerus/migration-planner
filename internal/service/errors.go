@@ -35,6 +35,7 @@ type ErrExcelFileNotValid struct {
 	error
 }
 
+// NewErrExcelFileNotValid returns an error indicating that the uploaded file is not a valid Excel (.xlsx) file and instructs the user to upload an RVTools export in Excel format.
 func NewErrExcelFileNotValid() *ErrExcelFileNotValid {
 	return &ErrExcelFileNotValid{errors.New("the uploaded file is not a valid Excel (.xlsx) file. Please upload an RVTools export in Excel format.")}
 }

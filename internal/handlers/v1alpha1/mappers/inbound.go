@@ -6,7 +6,8 @@ import (
 	"github.com/kubev2v/migration-planner/internal/util"
 )
 
-// mapLabels converts API labels to map[string]string
+// mapLabels converts a pointer to a slice of API Label structs into a map of string keys and values.
+// Returns nil if the input is nil.
 func mapLabels(apiLabels *[]v1alpha1.Label) map[string]string {
 	if apiLabels == nil {
 		return nil
@@ -18,7 +19,8 @@ func mapLabels(apiLabels *[]v1alpha1.Label) map[string]string {
 	return labels
 }
 
-// mapProxyFields extracts proxy fields from API proxy struct
+// mapProxyFields returns the HTTP, HTTPS, and NoProxy URLs from an AgentProxy struct as strings.
+// If the input is nil, empty strings are returned for all fields.
 func mapProxyFields(proxy *v1alpha1.AgentProxy) (httpUrl, httpsUrl, noProxy string) {
 	if proxy == nil {
 		return "", "", ""
@@ -29,7 +31,8 @@ func mapProxyFields(proxy *v1alpha1.AgentProxy) (httpUrl, httpsUrl, noProxy stri
 		util.DerefString(proxy.NoProxy)
 }
 
-// mapProxyFieldsForUpdate extracts proxy fields for update form (returns pointers)
+// mapProxyFieldsForUpdate extracts HTTP, HTTPS, and no-proxy URL fields from an AgentProxy struct as pointers.
+// Returns nil pointers if the input proxy is nil.
 func mapProxyFieldsForUpdate(proxy *v1alpha1.AgentProxy) (httpUrl, httpsUrl, noProxy *string) {
 	if proxy == nil {
 		return nil, nil, nil
@@ -37,6 +40,8 @@ func mapProxyFieldsForUpdate(proxy *v1alpha1.AgentProxy) (httpUrl, httpsUrl, noP
 	return proxy.HttpUrl, proxy.HttpsUrl, proxy.NoProxy
 }
 
+// SourceFormApi converts a SourceCreate API resource into an internal SourceCreateForm struct.
+// It maps proxy fields, labels, and optional SSH public key and certificate chain values for use by the migration planner service.
 func SourceFormApi(resource v1alpha1.SourceCreate) mappers.SourceCreateForm {
 	httpUrl, httpsUrl, noProxy := mapProxyFields(resource.Proxy)
 
@@ -58,6 +63,8 @@ func SourceFormApi(resource v1alpha1.SourceCreate) mappers.SourceCreateForm {
 	return form
 }
 
+// SourceUpdateFormApi converts an API SourceUpdate resource into an internal SourceUpdateForm structure.
+// It maps proxy fields, optional name, SSH public key, certificate chain, and label fields, handling nil values appropriately.
 func SourceUpdateFormApi(resource v1alpha1.SourceUpdate) mappers.SourceUpdateForm {
 	httpUrl, httpsUrl, noProxy := mapProxyFieldsForUpdate(resource.Proxy)
 
