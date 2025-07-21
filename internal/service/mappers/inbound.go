@@ -84,6 +84,8 @@ func (f *AgentUpdateForm) ToModel() model.Agent {
 	}
 }
 
+// UpdateSourceFromApi updates the given Source with inventory data and VCenter ID from the provided API inventory.
+// It sets the Source's Inventory field to a JSON representation of the inventory and updates the VCenterID.
 func UpdateSourceFromApi(m *model.Source, inventory api.Inventory) *model.Source {
 	m.Inventory = model.MakeJSONField(inventory)
 	m.VCenterID = inventory.Vcenter.Id

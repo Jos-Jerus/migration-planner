@@ -22,6 +22,8 @@ var (
 	labelRegex           = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$`)
 )
 
+// nameValidator checks if the field is a string that matches the allowed source name pattern.
+// Returns false if the field is not a string or does not conform to the pattern.
 func nameValidator(fl validator.FieldLevel) bool {
 	val, ok := fl.Field().Interface().(string)
 	if !ok {
@@ -92,6 +94,8 @@ func agentStatusValidator(fl validator.FieldLevel) bool {
 	}
 }
 
+// uuidValidator checks whether the field is a non-zero uuid.UUID value.
+// Returns false if the field is not of type uuid.UUID or is the zero UUID.
 func uuidValidator(fl validator.FieldLevel) bool {
 	val, ok := fl.Field().Interface().(uuid.UUID)
 	if !ok {
@@ -100,6 +104,7 @@ func uuidValidator(fl validator.FieldLevel) bool {
 	return val != uuid.UUID{}
 }
 
+// labelValidator checks if a string field is a valid label, ensuring it is non-empty, starts and ends with an alphanumeric character, and contains only alphanumeric characters, dots, underscores, or hyphens. Returns false if the field is not a string.
 func labelValidator(fl validator.FieldLevel) bool {
 	val, ok := fl.Field().Interface().(string)
 	if !ok {
@@ -112,6 +117,8 @@ func labelValidator(fl validator.FieldLevel) bool {
 	return labelRegex.MatchString(val)
 }
 
+// startsWithValidator checks if a pointer to a string is nil or if its value starts with the specified prefix parameter.
+// Returns false if the field is not a pointer to a string.
 func startsWithValidator(fl validator.FieldLevel) bool {
 	val, ok := fl.Field().Addr().Interface().(*string)
 	if !ok {

@@ -19,6 +19,7 @@ func NewAgentValidationRules() []ValidationRule {
 	}
 }
 
+// NewSourceValidationRules returns a list of validation rules for source-related fields, each registering a custom validation function with the validator.
 func NewSourceValidationRules() []ValidationRule {
 	return []ValidationRule{
 		{

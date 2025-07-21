@@ -564,7 +564,8 @@ func NewHeadImageRequest(server string, id openapi_types.UUID) (*http.Request, e
 	return req, nil
 }
 
-// NewGetSourceDownloadURLRequest generates requests for GetSourceDownloadURL
+// NewGetSourceDownloadURLRequest creates an HTTP GET request for retrieving the download URL of a source image by its ID.
+// Returns the constructed request or an error if URL parsing or parameter encoding fails.
 func NewGetSourceDownloadURLRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
 
@@ -598,7 +599,9 @@ func NewGetSourceDownloadURLRequest(server string, id openapi_types.UUID) (*http
 	return req, nil
 }
 
-// NewUpdateInventoryRequest calls the generic UpdateInventory builder with application/json body
+// NewUpdateInventoryRequest creates an HTTP PUT request to update the inventory for a specific source using a JSON body.
+// It marshals the provided request body to JSON and sets the appropriate Content-Type header.
+// Returns the constructed HTTP request or an error if JSON marshaling fails.
 func NewUpdateInventoryRequest(server string, id openapi_types.UUID, body UpdateInventoryJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
@@ -609,7 +612,8 @@ func NewUpdateInventoryRequest(server string, id openapi_types.UUID, body Update
 	return NewUpdateInventoryRequestWithBody(server, id, "application/json", bodyReader)
 }
 
-// NewUpdateInventoryRequestWithBody generates requests for UpdateInventory with any type of body
+// NewUpdateInventoryRequestWithBody creates an HTTP PUT request to update the inventory for a specific source, allowing any body content and content type.
+// The request targets the /api/v1/sources/{id}/inventory endpoint with the provided source ID.
 func NewUpdateInventoryRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
@@ -645,7 +649,7 @@ func NewUpdateInventoryRequestWithBody(server string, id openapi_types.UUID, con
 	return req, nil
 }
 
-// NewUploadRvtoolsFileRequestWithBody generates requests for UploadRvtoolsFile with any type of body
+// NewUploadRvtoolsFileRequestWithBody creates an HTTP PUT request to upload an RVTools file for a specific source, allowing any content type and body format.
 func NewUploadRvtoolsFileRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
@@ -1517,7 +1521,9 @@ func ParseHeadImageResponse(rsp *http.Response) (*HeadImageResponse, error) {
 	return response, nil
 }
 
-// ParseGetSourceDownloadURLResponse parses an HTTP response from a GetSourceDownloadURLWithResponse call
+// ParseGetSourceDownloadURLResponse reads and parses the HTTP response from a GetSourceDownloadURLWithResponse call.
+// It unmarshals the response body into the appropriate field of GetSourceDownloadURLResponse based on status code and content type.
+// Returns the parsed response or an error if reading or unmarshaling fails.
 func ParseGetSourceDownloadURLResponse(rsp *http.Response) (*GetSourceDownloadURLResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
@@ -1564,7 +1570,8 @@ func ParseGetSourceDownloadURLResponse(rsp *http.Response) (*GetSourceDownloadUR
 	return response, nil
 }
 
-// ParseUpdateInventoryResponse parses an HTTP response from a UpdateInventoryWithResponse call
+// ParseUpdateInventoryResponse reads and parses the HTTP response from an UpdateInventory API call.
+// It returns an UpdateInventoryResponse containing the raw response, status code, and any deserialized JSON payload for recognized status codes.
 func ParseUpdateInventoryResponse(rsp *http.Response) (*UpdateInventoryResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
@@ -1625,7 +1632,8 @@ func ParseUpdateInventoryResponse(rsp *http.Response) (*UpdateInventoryResponse,
 	return response, nil
 }
 
-// ParseUploadRvtoolsFileResponse parses an HTTP response from a UploadRvtoolsFileWithResponse call
+// ParseUploadRvtoolsFileResponse reads and parses the HTTP response from an UploadRvtoolsFileWithResponse call.
+// It returns an UploadRvtoolsFileResponse containing the raw response, status code, and any parsed JSON payload for recognized status codes.
 func ParseUploadRvtoolsFileResponse(rsp *http.Response) (*UploadRvtoolsFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()

@@ -472,7 +472,8 @@ func HandlerFromMuxWithBaseURL(si ServerInterface, r chi.Router, baseURL string)
 	})
 }
 
-// HandlerWithOptions creates http.Handler with additional options
+// HandlerWithOptions returns an http.Handler that serves the API endpoints using the provided ServerInterface and configuration options.
+// The handler registers all routes, applies any specified middlewares, and uses the configured error handler for request processing.
 func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handler {
 	r := options.BaseRouter
 
