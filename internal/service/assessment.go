@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/google/uuid"
 
@@ -132,12 +131,10 @@ func (as *AssessmentService) CreateAssessment(ctx context.Context, createForm ma
 		inventory = createForm.Inventory
 	case SourceTypeRvtools:
 		tracer.Step("process_rvtools_source").Log()
-		content, err := io.ReadAll(createForm.RVToolsFile)
-		if err != nil {
-			return nil, err
-		}
-		tracer.Step("read_rvtools_file").WithInt("file_size", len(content)).Log()
-		rvtoolInventory, err := rvtools.ParseRVTools(ctx, content, as.opaValidator)
+		// File bytes were already read from multipart in the handler layer
+		// No need to read again - just use the bytes directly
+		tracer.Step("ready_to_parse_rvtools").WithInt("file_size", len(createForm.RVToolsFile)).Log()
+		rvtoolInventory, err := rvtools.ParseRVTools(ctx, createForm.RVToolsFile, as.opaValidator)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing RVTools file: %v", err)
 		}

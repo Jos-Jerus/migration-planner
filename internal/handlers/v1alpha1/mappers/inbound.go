@@ -189,16 +189,17 @@ func AssessmentCreateFormFromMultipart(multipartBody *multipart.Reader, user aut
 			}
 			form.Name = string(nameBytes)
 		case "file":
-			buff := bytes.NewBuffer([]byte{})
-			n, err := io.Copy(buff, part)
+			// Read the file into memory once
+			// We must do this here because multipart.Part is only valid during iteration
+			fileBytes, err := io.ReadAll(part)
 			if err != nil {
 				return form, err
 			}
-			if n == 0 {
+			if len(fileBytes) == 0 {
 				return form, fmt.Errorf("rvtools file body is empty")
 			}
-			// Store the entire part as RVToolsFile for processing
-			form.RVToolsFile = buff
+			// Store bytes directly - no need to wrap in reader
+			form.RVToolsFile = fileBytes
 		case "labels":
 			// Handle labels if provided in multipart form
 			// This is optional based on the API spec
