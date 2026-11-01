@@ -121,11 +121,18 @@ func newUnstartedTestApplianceCache(t cacheTestingT) (*ApplianceImageCache, stri
 	}
 	commands := map[string]string{
 		"skopeo": `
+mode=""
+previous=""
 for arg do
- if [ "$arg" = "inspect" ]; then
-  if [ -f "$CACHE_TEST_ROOT/version" ]; then cat "$CACHE_TEST_ROOT/version"; else echo "<no value>"; fi
+ if [ "$arg" = "inspect" ]; then mode=inspect; fi
+ if [ "$mode" = "inspect" ] && [ "$previous" = "--format" ]; then
+  case "$arg" in
+   *Digest*) printf 'sha256:%s\n' "$(tr ' ' - < "$CACHE_TEST_ROOT/image")" ;;
+   *) if [ -f "$CACHE_TEST_ROOT/version" ]; then cat "$CACHE_TEST_ROOT/version"; else echo "<no value>"; fi ;;
+  esac
   exit 0
  fi
+ previous="$arg"
 done
 touch "$CACHE_TEST_ROOT/pull-attempted"
 if [ -f "$CACHE_TEST_ROOT/fail-pull" ]; then touch "$CACHE_TEST_ROOT/failed-pull"; exit 1; fi
@@ -133,10 +140,7 @@ if [ -f "$CACHE_TEST_ROOT/block" ]; then
  touch "$CACHE_TEST_ROOT/pulling"
  while [ -f "$CACHE_TEST_ROOT/block" ]; do sleep 0.05; done
 fi
-previous=""
 for arg do
- if [ "$previous" = "--digestfile" ]; then printf 'sha256:%s\n' "$(tr ' ' - < "$CACHE_TEST_ROOT/image")" > "$arg"; fi
- previous="$arg"
  target="$arg"
 done
 cat "$CACHE_TEST_ROOT/image" > "${target#oci-archive:}"

@@ -25,11 +25,20 @@ import (
 
 // Fake tools let the real cache publish an image without a registry or ISO tooling.
 var fakeApplianceTools = map[string]string{
-	"skopeo": `for arg do if [ "$arg" = "inspect" ]; then echo v0.31.0; exit 0; fi; done
+	"skopeo": `mode=""
 previous=""
 for arg do
- if [ "$previous" = "--digestfile" ]; then printf 'sha256:test\n' > "$arg"; fi
+ if [ "$arg" = "inspect" ]; then mode=inspect; fi
+ if [ "$mode" = "inspect" ] && [ "$previous" = "--format" ]; then
+  case "$arg" in
+   *Digest*) printf 'sha256:test\n' ;;
+   *) echo v0.31.0 ;;
+  esac
+  exit 0
+ fi
  previous="$arg"
+done
+for arg do
  target="$arg"
 done
 printf 'agent image' > "${target#oci-archive:}"`,

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -455,14 +456,12 @@ func (c *ApplianceImageCache) pullImage() error {
 	c.logger.Info("Pulling appliance image", zap.String("pullSpec", pullSpec))
 
 	tempTarPath := c.imageTarPath + ".tmp"
-	digestPath := c.imageTarPath + ".digest"
 
 	// Build skopeo command
 	args := []string{
 		"--override-os", "linux", "--override-arch", "amd64",
 		"copy",
 		"-q", // quiet mode
-		"--digestfile", digestPath,
 	}
 
 	if !c.cfg.TLSVerify {
@@ -480,12 +479,15 @@ func (c *ApplianceImageCache) pullImage() error {
 		return fmt.Errorf("skopeo copy failed: %w, output: %s", err, string(output))
 	}
 
-	// Manifest digest of the archived image; agents compare it with their running image.
-	digest, err := os.ReadFile(digestPath)
+	// Registry digest behind the tag; agents compare it with their running image.
+	// The digest skopeo copy records for the archive is NOT usable: copy rewrites
+	// the manifest for the oci-archive destination, and the registry does not know
+	// that digest (digest lookups fail with "manifest unknown").
+	digest, err := c.inspectDigest()
 	if err != nil {
-		return fmt.Errorf("failed to read appliance image digest: %w", err)
+		return err
 	}
-	c.imageDigest = strings.TrimSpace(string(digest))
+	c.imageDigest = digest
 
 	c.imageVersion, err = c.inspectVersion(c.imageDigest)
 	if err != nil {
@@ -506,6 +508,27 @@ func (c *ApplianceImageCache) pullImage() error {
 	return nil
 }
 
+// inspectDigest returns the registry's manifest digest behind the configured
+// image tag — the addressable digest agents can compare their running image to.
+func (c *ApplianceImageCache) inspectDigest() (string, error) {
+	args := []string{"inspect", "--format", "{{.Digest}}"}
+	if !c.cfg.TLSVerify {
+		args = append(args, "--tls-verify=false")
+	}
+	args = append(args, fmt.Sprintf("docker://%s", c.cfg.GetPullSpec()))
+
+	output, err := exec.CommandContext(c.ctx, "skopeo", args...).Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		stderr := ""
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
+		return "", fmt.Errorf("skopeo inspect failed: %w, stderr: %s", err, stderr)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
 // inspectVersion reads the version label of the pulled image from the registry by
 // digest: cheap, and pinned to the exact image in the archive.
 func (c *ApplianceImageCache) inspectVersion(digest string) (string, error) {
@@ -518,7 +541,12 @@ func (c *ApplianceImageCache) inspectVersion(digest string) (string, error) {
 
 	output, err := exec.CommandContext(c.ctx, "skopeo", args...).Output()
 	if err != nil {
-		return "", fmt.Errorf("skopeo inspect failed: %w", err)
+		var exitErr *exec.ExitError
+		stderr := ""
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
+		return "", fmt.Errorf("skopeo inspect failed: %w, stderr: %s", err, stderr)
 	}
 	version := strings.TrimSpace(string(output))
 	if version == "<no value>" {
