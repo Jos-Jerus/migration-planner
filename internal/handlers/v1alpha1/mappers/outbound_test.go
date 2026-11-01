@@ -29,7 +29,7 @@ var _ = Describe("SourceToApi", func() {
 			Name:       "test-source",
 			UpdateType: "auto",
 		}
-		result, err := mappers.SourceToApi(source)
+		result, err := mappers.SourceToApi(source, "")
 		Expect(err).To(BeNil())
 		Expect(result.UpdateType).NotTo(BeNil())
 		Expect(*result.UpdateType).To(Equal(api.SourceUpdateType("auto")))
@@ -41,7 +41,7 @@ var _ = Describe("SourceToApi", func() {
 			Name:       "test-source",
 			UpdateType: "",
 		}
-		result, err := mappers.SourceToApi(source)
+		result, err := mappers.SourceToApi(source, "")
 		Expect(err).To(BeNil())
 		Expect(result.UpdateType).To(BeNil())
 	})

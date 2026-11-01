@@ -22,7 +22,21 @@ type AgentStatusUpdate struct {
 	SourceId      openapi_types.UUID `json:"sourceId" validate:"required,sourceId"`
 	Status        string             `json:"status" validate:"required,status"`
 	StatusInfo    string             `json:"statusInfo" validate:"required,max=200"`
-	Version       string             `json:"version" validate:"required,max=20"`
+
+	// Version Appliance version as stamped by APPLIANCE_VERSION, e.g. stable-release-0.31-25fcb31
+	Version string `json:"version" validate:"required,max=64"`
+}
+
+// AgentUpdateStatus Tells a connected agent whether its appliance version differs from the appliance image the service serves.
+type AgentUpdateStatus struct {
+	// CurrentVersion Version the agent reported, or the version stored when the OVA was downloaded; omitted when neither is known.
+	CurrentVersion *string `json:"currentVersion,omitempty"`
+
+	// LatestVersion Version of the appliance image the service serves; empty when the cache has no version.
+	LatestVersion string `json:"latestVersion"`
+
+	// UpdateAvailable True when the agent's reported version differs from the served appliance image.
+	UpdateAvailable bool `json:"updateAvailable"`
 }
 
 // SourceStatusUpdate defines model for SourceStatusUpdate.
