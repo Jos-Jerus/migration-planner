@@ -143,17 +143,22 @@ func (h *ImageHandler) GetImageByToken(ctx context.Context, req imageServer.GetI
 		}
 	}
 
-	versionInfo := version.Get()
-	if !version.IsValidAgentVersion(versionInfo.AgentVersionName) {
-		zap.S().Named("image_service").Warnw("agent version not valid, skipping storage", "source_id", source.ID, "agent_version_name", versionInfo.AgentVersionName, "agent_git_commit", versionInfo.AgentGitCommit)
+	// Stamp the version of the appliance image actually served in this OVA, so
+	// disconnected sources carry their deployed version. The planner's build-time
+	// tag no longer describes the separately built appliance (OMA-2054).
+	cachedImage, err := h.applianceCache.GetImage()
+	if err != nil {
+		zap.S().Named("image_service").Warnw("failed to read cached appliance image", "error", err, "source_id", source.ID)
+	} else if !version.IsValidAgentVersion(cachedImage.Version) {
+		zap.S().Named("image_service").Warnw("cached appliance image has no valid version, skipping storage", "source_id", source.ID, "agent_version", cachedImage.Version)
 	} else {
 		persistCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := h.store.ImageInfra().UpdateAgentVersion(persistCtx, source.ID.String(), versionInfo.AgentVersionName); err != nil {
-			zap.S().Named("image_service").Warnw("failed to update agent version", "error", err, "source_id", source.ID, "agent_version", versionInfo.AgentVersionName)
+		if err := h.store.ImageInfra().UpdateAgentVersion(persistCtx, source.ID.String(), cachedImage.Version); err != nil {
+			zap.S().Named("image_service").Warnw("failed to update agent version", "error", err, "source_id", source.ID, "agent_version", cachedImage.Version)
 		} else {
-			zap.S().Named("image_service").Infow("stored agent version", "source_id", source.ID, "agent_version", versionInfo.AgentVersionName)
+			zap.S().Named("image_service").Infow("stored agent version", "source_id", source.ID, "agent_version", cachedImage.Version)
 		}
 	}
 
